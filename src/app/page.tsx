@@ -14,6 +14,107 @@ import { supabase } from "../lib/supabase";
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 
+// Helper Component for Job Cards
+const JobCardItem = ({ job, user, advanceJobStatus, setShowChatId, setScanMode, isFreelancerSection }: any) => {
+  return (
+    <div className="card-premium p-8 space-y-6 border-l-4 border-l-indigo-500">
+      <div className="flex justify-between items-start">
+          <div>
+            <div className="text-[10px] font-black tracking-[0.2em] mb-2 text-indigo-500 uppercase">TX-ID: {job.id.toUpperCase()}</div>
+            <h4 className="text-2xl font-black mb-1">{job.gig_title}</h4>
+            <div className="flex items-center gap-4">
+              <p className="text-xs font-bold text-slate-500 uppercase">Tipo: {job.type}</p>
+              <button 
+              onClick={() => setShowChatId(job.id)}
+              className="text-[10px] font-black text-indigo-600 flex items-center gap-1 hover:underline uppercase tracking-widest"
+              >
+                <Globe className="h-3 w-3" /> Abrir Chat de Seguridad
+              </button>
+            </div>
+          </div>
+          <div className="text-2xl font-black">${job.price}</div>
+      </div>
+
+      <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
+          {job.status === 'escrow_funded' && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Lock className="h-6 w-6 text-emerald-500" />
+                <div>
+                  <div className="font-black text-emerald-500">Fondos Congelados y Seguros</div>
+                  <div className="text-xs text-slate-500">ContrataMe custodia el pago.</div>
+                </div>
+              </div>
+              {isFreelancerSection && (
+                <button onClick={() => advanceJobStatus(job.id, 'in_progress')} className="btn-primary py-2 px-6 text-sm">Comenzar Trabajo</button>
+              )}
+            </div>
+          )}
+
+          {job.status === 'in_progress' && (
+            <div className="flex flex-col gap-4">
+              <div className="font-black text-amber-500 flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse"/> Trabajo en Progreso</div>
+              
+              {isFreelancerSection && job.type === 'digital' && (
+                <button onClick={() => advanceJobStatus(job.id, 'in_review')} className="btn-secondary w-full flex items-center justify-center gap-2"><Upload className="h-4 w-4"/> Enviar Entregable (Zip/Link)</button>
+              )}
+
+              {isFreelancerSection && job.type === 'physical' && (
+                <div className="flex gap-4">
+                  <button className="btn-secondary flex-1 py-4 flex flex-col gap-2 items-center text-xs"><Camera className="h-5 w-5"/> Subir Evidencia (Local)</button>
+                  <button onClick={() => advanceJobStatus(job.id, 'qr_checkout')} className="btn-primary flex-1 py-4 flex flex-col gap-2 items-center text-xs"><QrCode className="h-5 w-5"/> Generar Checkout QR</button>
+                </div>
+              )}
+
+              {!isFreelancerSection && job.type === 'physical' && (
+                  <button onClick={() => setScanMode(job.id)} className="btn-primary w-full"><QrCode className="h-4 w-4"/> Escanear Checkout Físico</button>
+              )}
+            </div>
+          )}
+
+          {job.status === 'qr_checkout' && isFreelancerSection && (
+            <div className="flex flex-col items-center p-6 bg-white rounded-2xl">
+              <div className="font-black text-indigo-900 mb-4 text-center">Muestra este QR al cliente para liberar tu pago</div>
+              <QRCodeSVG value={`verify_${job.id}`} size={200} />
+            </div>
+          )}
+
+          {job.status === 'in_review' && (
+            <div className="flex items-center justify-between">
+              <div className="font-black text-blue-500">Entregable Enviado. Esperando Revisión.</div>
+              {!isFreelancerSection && (
+                <div className="flex gap-3">
+                    <button onClick={() => advanceJobStatus(job.id, 'disputed')} className="text-xs font-bold text-red-500 hover:underline">Iniciar Disputa</button>
+                    <button onClick={() => advanceJobStatus(job.id, 'completed')} className="btn-primary py-2 px-6 text-sm">Aprobar y Liberar Fondos</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {job.status === 'completed' && (
+            <div className="flex items-center gap-3 text-emerald-500 bg-emerald-500/10 p-4 rounded-xl">
+                <CheckCircle2 className="h-8 w-8" />
+                <div>
+                  <div className="font-black text-lg">Transacción Finalizada</div>
+                  <div className="text-xs font-bold">Los fondos fueron liberados al Freelancer.</div>
+                </div>
+            </div>
+          )}
+
+          {job.status === 'disputed' && (
+            <div className="flex items-center gap-3 text-red-500 bg-red-500/10 p-4 rounded-xl">
+                <AlertTriangle className="h-8 w-8" />
+                <div>
+                  <div className="font-black text-lg">En Disputa Legal</div>
+                  <div className="text-xs font-bold">Fondos congelados. Soporte revisará el caso en 24h.</div>
+                </div>
+            </div>
+          )}
+      </div>
+    </div>
+  );
+};
+
 // Mock Data
 const MOCK_GIGS = [
   { id: "1", owner_id: "f1", title: "Diseño de Logotipo Moderno", description: "Logotipos únicos para tu startup con 3 propuestas.", price: 450, category: "Diseño", type: "digital", image_url: "https://images.unsplash.com/photo-1572044162444-ad60f128bde7?q=80&w=800&auto=format&fit=crop" },
@@ -25,7 +126,7 @@ const MOCK_GIGS = [
 ];
 
 export default function ContrataMe() {
-  const [user, setUser] = useState<{ id: string; email: string; role: 'freelancer' | 'client', isVerified: boolean } | null>(null);
+  const [user, setUser] = useState<{ id: string; email: string; isVerified: boolean } | null>(null);
   const [gigs, setGigs] = useState(MOCK_GIGS);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab ] = useState('explore');
@@ -94,8 +195,7 @@ export default function ContrataMe() {
     };
   }, []);
 
-  const handleLogin = async (role: 'freelancer' | 'client') => {
-    // We now use the Auth Modal for all logins
+  const handleLogin = async () => {
     setShowAuthModal(true);
     setIsMobileMenuOpen(false);
   };
@@ -165,14 +265,14 @@ export default function ContrataMe() {
   // CHAT LOGIC
   const sendMessage = (jobId: string) => {
     if (!currentMessage.trim()) return;
-    const msg = { id: Date.now(), text: currentMessage, sender: user?.role, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+    const msg = { id: Date.now(), text: currentMessage, sender_id: user?.id, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
     const jobChat = chatMessages[jobId] || [];
     setChatMessages({ ...chatMessages, [jobId]: [...jobChat, msg] });
     setCurrentMessage('');
     
     // Auto-reply mock
     setTimeout(() => {
-      const reply = { id: Date.now() + 1, text: "Recibido. Revisaré los detalles ahora mismo.", sender: user?.role === 'client' ? 'freelancer' : 'client', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+      const reply = { id: Date.now() + 1, text: "Recibido. Revisaré los detalles ahora mismo.", sender_id: 'system', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
       setChatMessages(prev => ({ ...prev, [jobId]: [...(prev[jobId] || []), reply] }));
     }, 1500);
   };
@@ -201,9 +301,8 @@ export default function ContrataMe() {
     return matchesCategory && matchesSearch;
   });
 
-  const dashboardJobs = jobs.filter(j => 
-    user?.role === 'client' ? j.client_id === user.id : j.owner_id === user?.id
-  );
+  const jobsAsFreelancer = jobs.filter(j => j.owner_id === user?.id);
+  const jobsAsClient = jobs.filter(j => j.client_id === user?.id);
 
   return (
     <div className="min-h-screen text-slate-900 dark:text-white transition-colors duration-500">
@@ -246,24 +345,21 @@ export default function ContrataMe() {
             <div className="hidden md:flex items-center gap-8">
               {!user ? (
                 <div className="flex gap-4">
-                  <button onClick={() => handleLogin('freelancer')} className="btn-secondary">Soy Freelancer</button>
-                  <button onClick={() => handleLogin('client')} className="btn-primary">
-                    Comenzar Proyecto
+                  <button onClick={() => handleLogin()} className="btn-primary">
+                    Comenzar Ahora
                   </button>
                 </div>
               ) : (
                 <div className="flex items-center gap-8">
                   <div className="flex items-center gap-6">
-                    {user.role === 'client' && (
-                      <button 
-                        onClick={() => setActiveTab('explore')}
-                        className={`text-sm font-black uppercase tracking-widest transition-all ${
-                          activeTab === 'explore' ? 'text-indigo-600 scale-110' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                        }`}
-                      >
-                        Explorar
-                      </button>
-                    )}
+                    <button 
+                      onClick={() => setActiveTab('explore')}
+                      className={`text-sm font-black uppercase tracking-widest transition-all ${
+                        activeTab === 'explore' ? 'text-indigo-600 scale-110' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      Explorar
+                    </button>
                     <button 
                       onClick={() => setActiveTab('dashboard')}
                       className={`text-sm font-black uppercase tracking-widest transition-all ${
@@ -279,16 +375,9 @@ export default function ContrataMe() {
                       <User className="h-5 w-5" />
                     </div>
                     <div className="flex flex-col pr-4">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 leading-none">{user.role}</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 leading-none">Mi Perfil</span>
                       <span className="text-sm font-bold truncate max-w-[120px]">{user.email}</span>
                     </div>
-                    <button 
-                      onClick={() => handleLogin(user.role === 'client' ? 'freelancer' : 'client')}
-                      className="p-2 hover:bg-indigo-500/10 text-indigo-600 rounded-xl transition-all"
-                      title="Switch Role (Test)"
-                    >
-                      <TrendingUp className="h-5 w-5" />
-                    </button>
                     <button onClick={handleLogout} className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all">
                       <LogOut className="h-5 w-5" />
                     </button>
@@ -309,29 +398,22 @@ export default function ContrataMe() {
           >
             {!user ? (
                <div className="flex flex-col gap-4">
-                 <button onClick={() => handleLogin('freelancer')} className="btn-secondary w-full text-center py-6">Soy Freelancer</button>
-                 <button onClick={() => handleLogin('client')} className="btn-primary w-full text-center py-6">Comenzar Proyecto</button>
+                 <button onClick={() => handleLogin()} className="btn-primary w-full text-center py-6">Comenzar Ahora</button>
                </div>
             ) : (
               <div className="flex flex-col gap-4">
                 <button onClick={() => { setActiveTab('explore'); setIsMobileMenuOpen(false); }} className={`text-xl font-black p-4 text-left rounded-2xl ${activeTab === 'explore' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Explorar Gigs</button>
                 <button onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }} className={`text-xl font-black p-4 text-left rounded-2xl ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Dashboard</button>
-                  <div className="flex items-center justify-between mb-6 px-4">
-                    <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 bg-indigo-600 rounded-full flex items-center justify-center text-white"><User /></div>
-                      <div className="flex flex-col">
-                        <span className="text-xs font-black text-indigo-500 uppercase">{user.role}</span>
-                        <span className="font-bold">{user.email}</span>
-                      </div>
+                <div className="mt-auto pb-12 border-t border-slate-200 dark:border-slate-800 pt-8">
+                  <div className="flex items-center gap-4 px-4 mb-6">
+                    <div className="h-12 w-12 bg-indigo-600 rounded-full flex items-center justify-center text-white"><User /></div>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-black text-indigo-500 uppercase">Mi Perfil</span>
+                      <span className="font-bold">{user.email}</span>
                     </div>
-                    <button 
-                      onClick={() => handleLogin(user.role === 'client' ? 'freelancer' : 'client')}
-                      className="p-4 bg-indigo-500/10 text-indigo-600 rounded-2xl"
-                    >
-                      <TrendingUp className="h-6 w-6" />
-                    </button>
                   </div>
                   <button onClick={handleLogout} className="w-full btn-secondary text-red-500 py-6 font-black uppercase tracking-widest text-xs">Cerrar Sesión</button>
+                </div>
               </div>
             )}
           </motion.div>
@@ -432,11 +514,9 @@ export default function ContrataMe() {
                         </button>
                      )}
 
-                     {user?.role === 'freelancer' && (
-                       <button onClick={() => setShowPostGigModal(true)} className="btn-primary w-full py-4 mt-6 flex items-center justify-center gap-2">
-                         <Zap className="h-5 w-5" /> Publicar Nuevo Gig
-                       </button>
-                     )}
+                      <button onClick={() => setShowPostGigModal(true)} className="btn-primary w-full py-4 mt-6 flex items-center justify-center gap-2">
+                        <Zap className="h-5 w-5" /> Publicar Nuevo Gig
+                      </button>
                   </div>
 
                   <div className="card-premium p-8 space-y-6">
@@ -449,121 +529,47 @@ export default function ContrataMe() {
                  </div>
 
                  {/* Active Projects Tracker */}
-                 <div className="lg:w-2/3 space-y-8">
-                   <h3 className="text-3xl font-black tracking-tighter">Panel Avanzado Escrow</h3>
-                   {dashboardJobs.length === 0 ? (
-                      <div className="py-24 card-premium border-dashed border-2 flex flex-col items-center justify-center text-slate-400">
-                        <Lock className="h-16 w-16 mb-4 opacity-10" />
-                        <p className="font-bold text-lg">
-                          {user?.role === 'client' ? 'Aún no has contratado servicios.' : 'No tienes trabajos asignados todavía.'}
-                        </p>
-                        {user?.role === 'client' && (
+                 <div className="lg:w-2/3 space-y-12">
+                   {/* SECTION: AS FREELANCER (SALES) */}
+                   <div className="space-y-6">
+                      <h3 className="text-3xl font-black tracking-tighter flex items-center gap-3">
+                        <TrendingUp className="h-8 w-8 text-indigo-500" />
+                        Mis Ventas (Freelancer)
+                      </h3>
+                      {jobsAsFreelancer.length === 0 ? (
+                        <div className="py-20 card-premium border-dashed border-2 flex flex-col items-center justify-center text-slate-400">
+                          <Lock className="h-12 w-12 mb-4 opacity-10" />
+                          <p className="font-bold">Aún no has vendido ningún servicio.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-6">
+                           {jobsAsFreelancer.map(job => (
+                             <JobCardItem key={job.id} job={job} user={user} advanceJobStatus={advanceJobStatus} setShowChatId={setShowChatId} setScanMode={setScanMode} isFreelancerSection={true} />
+                           ))}
+                        </div>
+                      )}
+                   </div>
+
+                   {/* SECTION: AS CLIENT (PURCHASES) */}
+                   <div className="space-y-6">
+                      <h3 className="text-3xl font-black tracking-tighter flex items-center gap-3">
+                        <ShoppingCart className="h-8 w-8 text-emerald-500" />
+                        Mis Compras (Cliente)
+                      </h3>
+                      {jobsAsClient.length === 0 ? (
+                        <div className="py-20 card-premium border-dashed border-2 flex flex-col items-center justify-center text-slate-400">
+                          <ShoppingCart className="h-12 w-12 mb-4 opacity-10" />
+                          <p className="font-bold">Aún no has contratado nada.</p>
                           <button onClick={() => setActiveTab('explore')} className="mt-4 text-indigo-600 font-bold hover:underline">Ir a explorar gigs</button>
-                        )}
-                      </div>
-                   ) : (
-                     <div className="space-y-6">
-                        {dashboardJobs.map(job => (
-                           <div key={job.id} className="card-premium p-8 space-y-6 border-l-4 border-l-indigo-500">
-                              <div className="flex justify-between items-start">
-                                 <div>
-                                   <div className="text-[10px] font-black tracking-[0.2em] mb-2 text-indigo-500 uppercase">TX-ID: {job.id.toUpperCase()}</div>
-                                   <h4 className="text-2xl font-black mb-1">{job.gig_title}</h4>
-                                   <div className="flex items-center gap-4">
-                                     <p className="text-xs font-bold text-slate-500 uppercase">Tipo: {job.type}</p>
-                                     <button 
-                                      onClick={() => setShowChatId(job.id)}
-                                      className="text-[10px] font-black text-indigo-600 flex items-center gap-1 hover:underline uppercase tracking-widest"
-                                     >
-                                       <Globe className="h-3 w-3" /> Abrir Chat de Seguridad
-                                     </button>
-                                   </div>
-                                 </div>
-                                 <div className="text-2xl font-black">${job.price}</div>
-                              </div>
-
-                              {/* Escrow Status Timeline */}
-                              <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
-                                 {/* Status Logic Matrix */}
-                                 {job.status === 'escrow_funded' && (
-                                   <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-3">
-                                        <Lock className="h-6 w-6 text-emerald-500" />
-                                        <div>
-                                          <div className="font-black text-emerald-500">Fondos Congelados y Seguros</div>
-                                          <div className="text-xs text-slate-500">ContrataMe custodia el pago.</div>
-                                        </div>
-                                      </div>
-                                      {user?.role === 'freelancer' && (
-                                        <button onClick={() => advanceJobStatus(job.id, 'in_progress')} className="btn-primary py-2 px-6 text-sm">Comenzar Trabajo</button>
-                                      )}
-                                   </div>
-                                 )}
-
-                                 {job.status === 'in_progress' && (
-                                   <div className="flex flex-col gap-4">
-                                      <div className="font-black text-amber-500 flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse"/> Trabajo en Progreso</div>
-                                      
-                                      {user?.role === 'freelancer' && job.type === 'digital' && (
-                                        <button onClick={() => advanceJobStatus(job.id, 'in_review')} className="btn-secondary w-full flex items-center justify-center gap-2"><Upload className="h-4 w-4"/> Enviar Entregable (Zip/Link)</button>
-                                      )}
-
-                                      {user?.role === 'freelancer' && job.type === 'physical' && (
-                                        <div className="flex gap-4">
-                                          <button className="btn-secondary flex-1 py-4 flex flex-col gap-2 items-center text-xs"><Camera className="h-5 w-5"/> Subir Evidencia (Local)</button>
-                                          <button onClick={() => advanceJobStatus(job.id, 'qr_checkout')} className="btn-primary flex-1 py-4 flex flex-col gap-2 items-center text-xs"><QrCode className="h-5 w-5"/> Generar Checkout QR</button>
-                                        </div>
-                                      )}
-
-                                      {user?.role === 'client' && job.type === 'physical' && (
-                                         <button onClick={() => setScanMode(job.id)} className="btn-primary w-full"><QrCode className="h-4 w-4"/> Escanear Checkout Físico</button>
-                                      )}
-                                   </div>
-                                 )}
-
-                                 {job.status === 'qr_checkout' && user?.role === 'freelancer' && (
-                                    <div className="flex flex-col items-center p-6 bg-white rounded-2xl">
-                                      <div className="font-black text-indigo-900 mb-4 text-center">Muestra este QR al cliente para liberar tu pago</div>
-                                      <QRCodeSVG value={`verify_${job.id}`} size={200} />
-                                    </div>
-                                 )}
-
-                                 {job.status === 'in_review' && (
-                                    <div className="flex items-center justify-between">
-                                      <div className="font-black text-blue-500">Entregable Enviado. Esperando Revisión.</div>
-                                      {user?.role === 'client' && (
-                                        <div className="flex gap-3">
-                                           <button onClick={() => advanceJobStatus(job.id, 'disputed')} className="text-xs font-bold text-red-500 hover:underline">Iniciar Disputa</button>
-                                           <button onClick={() => advanceJobStatus(job.id, 'completed')} className="btn-primary py-2 px-6 text-sm">Aprobar y Liberar Fondos</button>
-                                        </div>
-                                      )}
-                                    </div>
-                                 )}
-
-                                 {job.status === 'completed' && (
-                                    <div className="flex items-center gap-3 text-emerald-500 bg-emerald-500/10 p-4 rounded-xl">
-                                       <CheckCircle2 className="h-8 w-8" />
-                                       <div>
-                                         <div className="font-black text-lg">Transacción Finalizada</div>
-                                         <div className="text-xs font-bold">Los fondos fueron liberados al Freelancer.</div>
-                                       </div>
-                                    </div>
-                                 )}
-
-                                 {job.status === 'disputed' && (
-                                    <div className="flex items-center gap-3 text-red-500 bg-red-500/10 p-4 rounded-xl">
-                                       <AlertTriangle className="h-8 w-8" />
-                                       <div>
-                                         <div className="font-black text-lg">En Disputa Legal</div>
-                                         <div className="text-xs font-bold">Fondos congelados. Soporte revisará el caso en 24h.</div>
-                                       </div>
-                                    </div>
-                                 )}
-                              </div>
-                           </div>
-                        ))}
-                     </div>
-                   )}
+                        </div>
+                      ) : (
+                        <div className="space-y-6">
+                           {jobsAsClient.map(job => (
+                             <JobCardItem key={job.id} job={job} user={user} advanceJobStatus={advanceJobStatus} setShowChatId={setShowChatId} setScanMode={setScanMode} isFreelancerSection={false} />
+                           ))}
+                        </div>
+                      )}
+                   </div>
                  </div>
                </div>
             </motion.div>
@@ -733,8 +739,8 @@ export default function ContrataMe() {
                 
                 <div className="flex-1 overflow-y-auto p-8 space-y-6">
                    {chatMessages[showChatId]?.length ? chatMessages[showChatId].map(m => (
-                     <div key={m.id} className={`flex flex-col ${m.sender === user?.role ? 'items-end' : 'items-start'}`}>
-                       <div className={`max-w-[80%] p-4 rounded-2xl font-bold text-sm ${m.sender === user?.role ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-tl-none'}`}>
+                     <div key={m.id} className={`flex flex-col ${m.sender_id === user?.id ? 'items-end' : 'items-start'}`}>
+                       <div className={`max-w-[80%] p-4 rounded-2xl font-bold text-sm ${m.sender_id === user?.id ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-tl-none'}`}>
                          {m.text}
                        </div>
                        <span className="text-[9px] font-black text-slate-400 mt-2 uppercase">{m.timestamp}</span>
