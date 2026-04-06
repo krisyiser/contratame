@@ -15,7 +15,7 @@ import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 
 // Mock Data
-export const MOCK_GIGS = [
+const MOCK_GIGS = [
   { id: "1", owner_id: "f1", title: "Diseño de Logotipo Moderno", description: "Logotipos únicos para tu startup con 3 propuestas.", price: 450, category: "Diseño", type: "digital", image_url: "https://images.unsplash.com/photo-1572044162444-ad60f128bde7?q=80&w=800&auto=format&fit=crop" },
   { id: "2", owner_id: "f2", title: "Reparación Eléctrica Domicilio", description: "Servicios profesionales de electricidad certificados.", price: 150, category: "Oficios", type: "physical", image_url: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=800&auto=format&fit=crop" },
   { id: "3", owner_id: "f3", title: "Lectura de Tarot Espiritual", description: "Conoce tu destino financiero. Sesión de 1h.", price: 50, category: "Entretenimiento", type: "abstract", image_url: "https://images.unsplash.com/photo-1620131435213-9110d7a049c6?q=80&w=800&auto=format&fit=crop" },
