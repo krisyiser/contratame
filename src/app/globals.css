@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+@import "tailwindcss";
+
+
+:root {
+  --background: #ffffff;
+  --foreground: #0f172a;
+  --accent: #4f46e5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #020617;
+    --foreground: #f8fafc;
+    --accent: #6366f1;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: 'Outfit', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Premium Mesh Background */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background: 
+    radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 100% 0%, rgba(139, 92, 246, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 0% 100%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+  filter: blur(100px);
+}
+
+.dark body::before {
+  background: 
+    radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.2) 0%, transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(30, 41, 59, 0.8) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(2, 6, 23, 1) 0%, transparent 100%);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dark .glass {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.card-premium {
+  @apply relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200 dark:border-slate-800 transition-all duration-500;
+}
+
+.card-premium:hover {
+  @apply -translate-y-2 shadow-2xl shadow-indigo-500/20 border-indigo-500/50;
+}
+
+.btn-primary {
+  @apply relative overflow-hidden bg-indigo-600 text-white font-bold py-3 px-8 rounded-2xl transition-all duration-300 hover:bg-indigo-500 hover:shadow-2xl hover:shadow-indigo-500/40 active:scale-95 flex items-center justify-center gap-2;
+}
+
+.btn-secondary {
+  @apply bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur text-slate-800 dark:text-slate-100 font-bold py-3 px-8 rounded-2xl transition-all duration-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 border border-slate-200 dark:border-slate-700;
+}
