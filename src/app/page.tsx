@@ -156,14 +156,14 @@ export default function ContrataMe() {
 
   // Avatars Presets
   const AVATAR_PRESETS = [
-    { id: 'm1', url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=200&auto=format&fit=crop', gender: 'male' },
-    { id: 'm2', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop', gender: 'male' },
-    { id: 'm3', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200&auto=format&fit=crop', gender: 'male' },
-    { id: 'm4', url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop', gender: 'male' },
-    { id: 'f1', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop', gender: 'female' },
-    { id: 'f2', url: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=200&auto=format&fit=crop', gender: 'female' },
-    { id: 'f3', url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop', gender: 'female' },
-    { id: 'f4', url: 'https://images.unsplash.com/photo-1517849845537-4d257902454a?q=80&w=200&auto=format&fit=crop', gender: 'female' },
+    { id: 'a1', url: '/avatars/avatar_1.png' },
+    { id: 'a2', url: '/avatars/avatar_2.png' },
+    { id: 'a3', url: '/avatars/avatar_3.png' },
+    { id: 'a4', url: '/avatars/avatar_4.png' },
+    { id: 'a5', url: '/avatars/avatar_5.png' },
+    { id: 'a6', url: '/avatars/avatar_6.png' },
+    { id: 'a7', url: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=200&auto=format&fit=crop' },
+    { id: 'a8', url: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=200&auto=format&fit=crop' },
   ];
 
   // Chat State
