@@ -179,19 +179,32 @@ export default function ContrataMe() {
     setIsMounted(true);
     const fetchInitialData = async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      
+      const fetchJobsAndGigs = [
+        supabase.from('gigs').select('*'),
+        supabase.from('jobs').select('*')
+      ];
+
       if (session) {
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-        if (profile) {
-          setUser({ ...profile, email: session.user.email } as any);
-          if (!profile.full_name) setShowOnboarding(true);
+        // Fetch everything in parallel
+        const [profileRes, gigsRes, jobsRes] = await Promise.all([
+          supabase.from('profiles').select('*').eq('id', session.user.id).single(),
+          ...fetchJobsAndGigs
+        ]);
+
+        if (profileRes.data) {
+          setUser({ ...profileRes.data, email: session.user.email } as any);
+          if (!profileRes.data.full_name) setShowOnboarding(true);
         }
+
+        if (gigsRes.data && gigsRes.data.length > 0) setGigs(gigsRes.data);
+        if (jobsRes.data) setJobs(jobsRes.data);
+      } else {
+        // Just gigs if no session
+        const [gigsRes, jobsRes] = await Promise.all(fetchJobsAndGigs);
+        if (gigsRes.data && gigsRes.data.length > 0) setGigs(gigsRes.data);
+        if (jobsRes.data) setJobs(jobsRes.data);
       }
-
-      const { data: dbGigs } = await supabase.from('gigs').select('*');
-      if (dbGigs && dbGigs.length > 0) setGigs(dbGigs);
-
-      const { data: dbJobs } = await supabase.from('jobs').select('*');
-      if (dbJobs) setJobs(dbJobs);
       
       setLoading(false);
     };
@@ -204,9 +217,13 @@ export default function ContrataMe() {
            setUser({ ...profile, email: session.user.email } as any);
            if (!profile.full_name) setShowOnboarding(true);
            setShowAuthModal(false);
+           // Refresh data in background
+           const { data: dbJobs } = await supabase.from('jobs').select('*');
+           if (dbJobs) setJobs(dbJobs);
          }
        } else {
          setUser(null);
+         setActiveTab('explore');
        }
     });
 
@@ -482,8 +499,8 @@ export default function ContrataMe() {
             <motion.div key="explore" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-20">
                <header className="relative py-24 px-12 rounded-[3.5rem] overflow-hidden bg-slate-900 shadow-3xl">
                 <div className="absolute inset-0 z-0">
-                  <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-600/30 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/3" />
-                  <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-600/20 blur-[100px] rounded-full translate-y-1/2 -translate-x-1/4" />
+                  <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-600/20 blur-[80px] rounded-full -translate-y-1/2 translate-x-1/3" />
+                  <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-600/10 blur-[70px] rounded-full translate-y-1/2 -translate-x-1/4" />
                 </div>
                 <div className="relative z-10 max-w-4xl">
                    <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 px-4 py-2 rounded-full mb-8">
@@ -929,7 +946,7 @@ export default function ContrataMe() {
             <div className="fixed inset-0 z-[260] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-xl">
                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white dark:bg-slate-900 rounded-[3rem] w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col md:flex-row">
                  <div className="md:w-1/2 h-64 md:h-auto relative">
-                    <img src={viewDetailGig.image_url} alt={viewDetailGig.title} className="absolute inset-0 w-full h-full object-cover" />
+                    <img src={viewDetailGig.image_url} alt={viewDetailGig.title} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent" />
                  </div>
                  <div className="md:w-1/2 p-12 space-y-6">
