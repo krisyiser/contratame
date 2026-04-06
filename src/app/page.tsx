@@ -855,8 +855,6 @@ export default function ContrataMe() {
                           },
                           radii: {
                             borderRadiusButton: '1rem',
-                            buttonPadding: '1rem',
-                            inputPadding: '1rem'
                           }
                         }
                       }
