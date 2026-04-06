@@ -126,10 +126,11 @@ const MOCK_GIGS = [
 ];
 
 export default function ContrataMe() {
-  const [user, setUser] = useState<{ id: string; email: string; isVerified: boolean } | null>(null);
+  const [user, setUser] = useState<{ id: string; email: string; isVerified: boolean; full_name?: string; avatar_url?: string } | null>(null);
   const [gigs, setGigs] = useState(MOCK_GIGS);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab ] = useState('explore');
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [selectedGig, setSelectedGig] = useState<any>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
@@ -149,6 +150,22 @@ export default function ContrataMe() {
     title: '', description: '', price: 0, category: 'Diseño', type: 'digital'
   });
 
+  const [onboardingForm, setOnboardingForm] = useState({
+    first_name: '', last_name: '', address: '', municipality: '', state_location: '', phone: '', avatar_url: '', profession: ''
+  });
+
+  // Avatars Presets
+  const AVATAR_PRESETS = [
+    { id: 'm1', url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=200&auto=format&fit=crop', gender: 'male' },
+    { id: 'm2', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop', gender: 'male' },
+    { id: 'm3', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200&auto=format&fit=crop', gender: 'male' },
+    { id: 'm4', url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop', gender: 'male' },
+    { id: 'f1', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop', gender: 'female' },
+    { id: 'f2', url: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=200&auto=format&fit=crop', gender: 'female' },
+    { id: 'f3', url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop', gender: 'female' },
+    { id: 'f4', url: 'https://images.unsplash.com/photo-1517849845537-4d257902454a?q=80&w=200&auto=format&fit=crop', gender: 'female' },
+  ];
+
   // Chat State
   const [chatMessages, setChatMessages] = useState<Record<string, any[]>>({});
   const [currentMessage, setCurrentMessage] = useState('');
@@ -164,7 +181,10 @@ export default function ContrataMe() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-        if (profile) setUser({ ...profile, email: session.user.email } as any);
+        if (profile) {
+          setUser({ ...profile, email: session.user.email } as any);
+          if (!profile.full_name) setShowOnboarding(true);
+        }
       }
 
       const { data: dbGigs } = await supabase.from('gigs').select('*');
@@ -180,8 +200,11 @@ export default function ContrataMe() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
        if (session) {
          const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-         setUser({ ...profile, email: session.user.email } as any);
-         setShowAuthModal(false);
+         if (profile) {
+           setUser({ ...profile, email: session.user.email } as any);
+           if (!profile.full_name) setShowOnboarding(true);
+           setShowAuthModal(false);
+         }
        } else {
          setUser(null);
        }
@@ -209,6 +232,10 @@ export default function ContrataMe() {
   const handleHireClick = (gig: any) => {
     if (!user) {
       alert("Debes iniciar sesión para contratar.");
+      return;
+    }
+    if (!user?.full_name) {
+      setShowOnboarding(true);
       return;
     }
     if (gig.type === 'abstract') {
@@ -294,6 +321,32 @@ export default function ContrataMe() {
     setJobs(jobs.map(j => j.id === id ? { ...j, status: newStatus } : j));
   };
 
+  const handleCompleteOnboarding = async () => {
+    if (!onboardingForm.first_name || !onboardingForm.last_name || !onboardingForm.avatar_url) return;
+    const fullName = `${onboardingForm.first_name} ${onboardingForm.last_name}`;
+    
+    setLoading(true);
+    const { error } = await supabase.from('profiles').update({
+      full_name: fullName,
+      first_name: onboardingForm.first_name,
+      last_name: onboardingForm.last_name, 
+      avatar_url: onboardingForm.avatar_url,
+      address: onboardingForm.address,
+      bio: `Hola, soy ${onboardingForm.first_name}, ${onboardingForm.profession || 'freelancer'}.`,
+      municipality: onboardingForm.municipality,
+      state_location: onboardingForm.state_location,
+      phone: onboardingForm.phone,
+      profession: onboardingForm.profession
+    } as any).eq('id', user?.id);
+
+    if (!error) {
+      const { data: updatedProfile } = await supabase.from('profiles').select('*').eq('id', user?.id).single();
+      setUser({ ...updatedProfile, email: user?.email } as any);
+      setShowOnboarding(false);
+    }
+    setLoading(false);
+  };
+
   const filteredGigs = gigs.filter(g => {
     const matchesCategory = category === 'Todas' || g.category === category;
     const matchesSearch = g.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -371,12 +424,12 @@ export default function ContrataMe() {
                   </div>
                   <div className="h-8 w-px bg-slate-200 dark:bg-slate-800" />
                   <div className="flex items-center gap-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700">
-                    <div className="h-9 w-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-                      <User className="h-5 w-5" />
+                    <div className="h-9 w-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl overflow-hidden shadow-lg border-2 border-white/20">
+                      {user?.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover" /> : <User className="h-5 w-5" />}
                     </div>
                     <div className="flex flex-col pr-4">
                       <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 leading-none">Mi Perfil</span>
-                      <span className="text-sm font-bold truncate max-w-[120px]">{user.email}</span>
+                      <span className="text-sm font-bold truncate max-w-[120px]">{user?.full_name || user?.email}</span>
                     </div>
                     <button onClick={handleLogout} className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all">
                       <LogOut className="h-5 w-5" />
@@ -406,10 +459,12 @@ export default function ContrataMe() {
                 <button onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }} className={`text-xl font-black p-4 text-left rounded-2xl ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Dashboard</button>
                 <div className="mt-auto pb-12 border-t border-slate-200 dark:border-slate-800 pt-8">
                   <div className="flex items-center gap-4 px-4 mb-6">
-                    <div className="h-12 w-12 bg-indigo-600 rounded-full flex items-center justify-center text-white"><User /></div>
+                    <div className="h-12 w-12 bg-indigo-600 rounded-full overflow-hidden border-2 border-indigo-400">
+                       {user?.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover" /> : <User className="text-white" />}
+                    </div>
                     <div className="flex flex-col">
                       <span className="text-xs font-black text-indigo-500 uppercase">Mi Perfil</span>
-                      <span className="font-bold">{user.email}</span>
+                      <span className="font-bold">{user?.full_name || user?.email}</span>
                     </div>
                   </div>
                   <button onClick={handleLogout} className="w-full btn-secondary text-red-500 py-6 font-black uppercase tracking-widest text-xs">Cerrar Sesión</button>
@@ -494,13 +549,13 @@ export default function ContrataMe() {
                  {/* Dashboard Sidebar */}
                  <div className="lg:w-1/3 space-y-8">
                   <div className="card-premium p-8 text-center space-y-6 border-t-4 border-t-indigo-500">
-                     <div className="relative mx-auto h-24 w-24">
+                      <div className="relative mx-auto h-24 w-24">
                         <div className="absolute inset-0 bg-indigo-500 blur-2xl opacity-20 rounded-full" />
-                        <div className="relative h-full w-full bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center border-2 border-indigo-500/20">
-                          <User className="h-10 w-10 text-indigo-500" />
+                        <div className="relative h-full w-full bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center border-2 border-indigo-500/20 overflow-hidden">
+                           {user?.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover" /> : <User className="h-10 w-10 text-indigo-500" />}
                         </div>
                      </div>
-                     <h2 className="text-2xl font-black">{user?.email}</h2>
+                     <h2 className="text-2xl font-black">{user?.full_name || user?.email}</h2>
                      {user?.isVerified ? (
                         <div className="inline-flex items-center gap-2 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest">
                           <ShieldCheck className="h-4 w-4" /> KYC Identidad Verificada
@@ -768,6 +823,103 @@ export default function ContrataMe() {
                 </div>
               </motion.div>
             </>
+          )}
+        </AnimatePresence>
+
+        {/* Modal: Onboarding (Complete Profile) */}
+        <AnimatePresence>
+          {showOnboarding && (
+            <div className="fixed inset-0 z-[600] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-3xl overflow-y-auto">
+               <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white dark:bg-slate-900 rounded-[3rem] w-full max-w-4xl p-12 relative shadow-2xl my-12">
+                  <div className="text-center mb-12">
+                    <h3 className="text-5xl font-black tracking-tight">Bienvenido a ContrataMe</h3>
+                    <p className="text-slate-500 mt-4 text-lg">Completa tu perfil para empezar a operar de forma segura.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                    {/* Step 1: Avatar */}
+                    <div className="space-y-6">
+                      <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-indigo-600" /> Escoge tu Avatar
+                      </label>
+                      <div className="grid grid-cols-4 gap-4">
+                        {AVATAR_PRESETS.map(av => (
+                          <button 
+                            key={av.id} 
+                            onClick={() => setOnboardingForm({...onboardingForm, avatar_url: av.url})}
+                            className={`relative h-16 w-16 rounded-2xl overflow-hidden border-4 transition-all hover:scale-105 active:scale-95 ${onboardingForm.avatar_url === av.url ? 'border-indigo-600 scale-110 shadow-lg shadow-indigo-500/20' : 'border-transparent'}`}
+                          >
+                            <img src={av.url} className="w-full h-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                      <div className="p-8 bg-slate-50 dark:bg-slate-800 rounded-3xl text-center space-y-4">
+                        {onboardingForm.avatar_url ? (
+                          <img src={onboardingForm.avatar_url} className="h-24 w-24 rounded-full mx-auto border-4 border-white shadow-xl object-cover" />
+                        ) : (
+                          <div className="h-24 w-24 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto flex items-center justify-center"><User className="h-10 w-10 text-slate-400" /></div>
+                        )}
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Vista Previa de Identidad</p>
+                      </div>
+                    </div>
+
+                    {/* Step 2: Data Fields */}
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Nombre</label>
+                          <input type="text" placeholder="Juan" className="input-premium w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-0" value={onboardingForm.first_name} onChange={e => setOnboardingForm({...onboardingForm, first_name: e.target.value})} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Apellido</label>
+                          <input type="text" placeholder="Pérez" className="input-premium w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-0" value={onboardingForm.last_name} onChange={e => setOnboardingForm({...onboardingForm, last_name: e.target.value})} />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase text-slate-400">Profesión / Especialidad</label>
+                        <input type="text" placeholder="Ej: Desarrollador Fullstack / Plomero" className="input-premium w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-0" value={onboardingForm.profession} onChange={e => setOnboardingForm({...onboardingForm, profession: e.target.value})} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase text-slate-400">Dirección Exacta (Confidencial)</label>
+                        <input type="text" placeholder="Calle Ejemplo #123, Depto 4" className="input-premium w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-0" value={onboardingForm.address} onChange={e => setOnboardingForm({...onboardingForm, address: e.target.value})} />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Municipio</label>
+                          <input type="text" placeholder="Querétaro" className="input-premium w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-0" value={onboardingForm.municipality} onChange={e => setOnboardingForm({...onboardingForm, municipality: e.target.value})} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Estado</label>
+                          <input type="text" placeholder="Querétaro" className="input-premium w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-0" value={onboardingForm.state_location} onChange={e => setOnboardingForm({...onboardingForm, state_location: e.target.value})} />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase text-slate-400">Número de Contacto</label>
+                        <div className="relative">
+                          <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <input type="tel" placeholder="+52 442 123 4567" className="input-premium w-full pl-12 p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-0" value={onboardingForm.phone} onChange={e => setOnboardingForm({...onboardingForm, phone: e.target.value})} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-12 pt-12 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-6 items-center">
+                    <p className="text-xs font-bold text-slate-400 flex items-center gap-2"><Lock className="h-4 w-4" /> Tus datos sensibles solo son visibles para la administración para seguridad de reclamos.</p>
+                    <button 
+                      onClick={handleCompleteOnboarding} 
+                      disabled={!onboardingForm.first_name || !onboardingForm.last_name || !onboardingForm.avatar_url || loading}
+                      className="btn-primary px-12 py-5 text-lg flex items-center gap-2 group disabled:opacity-50 disabled:grayscale"
+                    >
+                      {loading ? "Generando Perfil..." : "Finalizar Perfil"}
+                      <ChevronRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  </div>
+               </motion.div>
+            </div>
           )}
         </AnimatePresence>
 
